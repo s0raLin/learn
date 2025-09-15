@@ -1,4 +1,3 @@
-
 /// Trait |	用途
 /// ---  | ---
 /// Debug |	调试输出
@@ -20,7 +19,10 @@ struct Race {
 impl Race {
     // 没有接收者，这是一个静态方法
     fn new(name: &str) -> Self {
-        Self { name: String::from(name), laps: Vec::new() }
+        Self {
+            name: String::from(name),
+            laps: Vec::new(),
+        }
     }
 
     // 对 self 提供独占的可变借用访问
@@ -31,7 +33,8 @@ impl Race {
     // 对 self 提供共享的只读借用访问
     fn print_laps(&self) {
         println!("Recorded {} laps for {}:", self.laps.len(), self.name);
-        for (idx, lap) in self.laps.iter().enumerate() { //迭代器遍历元素并包装成(key, value)
+        for (idx, lap) in self.laps.iter().enumerate() {
+            //迭代器遍历元素并包装成(key, value)
             println!("Lap {idx}: {lap} sec");
         }
     }

@@ -37,9 +37,9 @@ mod my_module {
             // TODO: 完成函数体。你可以做到的！
             let s = string.clone();
             match command {
-                Command::Uppercase => { output.push(s.to_uppercase()) }
-                Command::Trim => { output.push(s.trim().to_string()) }
-                Command::Append(end) => { output.push(s+&"bar".repeat(*end)) }
+                Command::Uppercase => output.push(s.to_uppercase()),
+                Command::Trim => output.push(s.trim().to_string()),
+                Command::Append(end) => output.push(s + &"bar".repeat(*end)),
             }
         }
         output
@@ -49,8 +49,8 @@ mod my_module {
 #[cfg(test)]
 mod tests {
     // TODO: 我们需要导入什么使作用域中有 `transformer`？
-    use super::my_module::transformer;
     use super::Command;
+    use super::my_module::transformer;
 
     #[test]
     fn it_works() {

@@ -19,7 +19,6 @@ impl Animal for Dog {
     }
 }
 
-
 fn main() {
     let puppy = Dog(String::from("Rex"));
     println!(" has {} legs", puppy.leg_count());

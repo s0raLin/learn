@@ -3,9 +3,7 @@
 /// * 结构体中只有最后一个字段可以使用动态大小类型,其他字段不可以使用。
 struct Foo<T: ?Sized> {
     len: usize,
-    value: T,  // DST 只能在最后一个字段
+    value: T, // DST 只能在最后一个字段
 }
 
-fn main() {
-    
-}
+fn main() {}

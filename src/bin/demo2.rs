@@ -15,7 +15,11 @@ enum Operation {
 #[derive(Debug)]
 enum Expression {
     /// 一个对两个子表达式的运算。
-    Op { op: Operation, left: Box<Expression>, right: Box<Expression> },
+    Op {
+        op: Operation,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
 
     /// 一个字面值
     Value(i64),
@@ -23,21 +27,23 @@ enum Expression {
 
 fn eval(e: Expression) -> Result<i64, String> {
     match e {
-        Expression::Op { op, left, right} => {
+        Expression::Op { op, left, right } => {
             let Ok(left) = eval(*left) else {
-                return Err(String::from("error"))
+                return Err(String::from("error"));
             };
             let Ok(right) = eval(*right) else {
-                return Err(String::from("error"))
+                return Err(String::from("error"));
             };
             match op {
                 Operation::Add => Ok(left + right),
                 Operation::Sub => Ok(left - right),
                 Operation::Mul => Ok(left * right),
-                Operation::Div => if right == 0 {
-                    Err(String::from("除0的算术异常"))
-                } else {
-                    Ok(left/right)
+                Operation::Div => {
+                    if right == 0 {
+                        Err(String::from("除0的算术异常"))
+                    } else {
+                        Ok(left / right)
+                    }
                 }
             }
         }
@@ -101,7 +107,4 @@ fn test_error() {
     );
 }
 
-
-fn main() {
-    
-}
+fn main() {}

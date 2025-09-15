@@ -5,8 +5,6 @@ pub trait Logger {
     fn log(&self, verbosity: u8, message: impl Display);
 }
 
-
-
 struct StderrLogger;
 
 impl Logger for StderrLogger {
@@ -22,7 +20,6 @@ fn do_things(logger: &impl Logger) {
 
 // TODO: 定义并实现 `VerbosityFilter`。
 struct VerbosityFilter {
-
     max_verbosity: u8,
     inner: StderrLogger,
 }
@@ -36,6 +33,9 @@ impl Logger for VerbosityFilter {
 }
 
 fn main() {
-    let l = VerbosityFilter { max_verbosity: 3, inner: StderrLogger };
+    let l = VerbosityFilter {
+        max_verbosity: 3,
+        inner: StderrLogger,
+    };
     do_things(&l);
 }

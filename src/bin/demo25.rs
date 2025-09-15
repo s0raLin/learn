@@ -10,25 +10,21 @@ trait PerPage {
     }
 }
 
-
 struct MyPaginate {
     page: i32,
 }
 
-trait Paginate: Page+PerPage {
+trait Paginate: Page + PerPage {
     fn set_skip_page(&self, num: i32) {
         println!("Skip Page: {:?}", num);
     }
 }
 
 // 为所有拥有Page和PerPage行为的类型实现Paginate
-impl <T: Page+PerPage>Paginate for T{ }
+impl<T: Page + PerPage> Paginate for T {}
 
 impl Page for MyPaginate {}
 impl PerPage for MyPaginate {}
-
-
-
 
 fn main() {
     let my_paginate = MyPaginate { page: 1 };

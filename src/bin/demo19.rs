@@ -15,5 +15,4 @@ fn main() {
     v3.push(6);
     let ret = v3[4];
     println!("ret = {}", ret);
-    
 }

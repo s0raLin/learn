@@ -1,10 +1,6 @@
 /// 根据 `n` 的值选择 `even` 或 `odd`。
 fn pick<T>(n: i32, even: T, odd: T) -> T {
-  if n%2 == 0 {
-      even
-  } else {
-      odd
-  }
+    if n % 2 == 0 { even } else { odd }
 }
 
 fn main() {

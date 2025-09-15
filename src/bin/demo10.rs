@@ -19,6 +19,4 @@ fn main() {
     let float = Point { x: 1.0, y: 4.0 };
     println!("{integer:?} and {float:?}");
     println!("coords: {:?}", integer.coords());
-    
 }
-

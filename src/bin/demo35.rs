@@ -6,11 +6,8 @@ struct A {
 }
 
 impl From<String> for A {
-    fn from(str: String)->Self {
-        A {
-            name: str,
-        }
-
+    fn from(str: String) -> Self {
+        A { name: str }
     }
 }
 

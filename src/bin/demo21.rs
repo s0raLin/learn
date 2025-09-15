@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-fn match_option<T: Debug>(o :Option<T>) {
+fn match_option<T: Debug>(o: Option<T>) {
     match o {
         Some(i) => println!("{:?}", i),
         None => println!("notinrg"),
@@ -16,8 +16,4 @@ fn main() {
     match_option(b); // "hello"
     match_option(c); //'A'
     match_option(d); // nothing
-
-
-
-
 }

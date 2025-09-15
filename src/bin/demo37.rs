@@ -3,8 +3,8 @@ fn main() {
     let y = Box::new(5);
     println!("{:p}", y);
     let x2 = x;
-    println!("{}",x2);
+    println!("{}", x2);
     let y2 = y;
-    println!("{:p}",y2);
-    println!("{}",x);
+    println!("{:p}", y2);
+    println!("{}", x);
 }

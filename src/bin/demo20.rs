@@ -6,5 +6,4 @@ fn main() {
     deque.push_front(2);
     assert_eq!(deque.get(0), Some(&1));
     assert_eq!(deque.get(1), Some(&2));
-
 }

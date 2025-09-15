@@ -19,12 +19,14 @@ trait Bar {
 }
 impl Bar for Foo {
     fn baz(&self) {
-        println!("{:?}",self);
+        println!("{:?}", self);
     }
 }
 
-fn static_dispatch<T>(t: &T) 
-where T:Bar {
+fn static_dispatch<T>(t: &T)
+where
+    T: Bar,
+{
     t.baz();
 }
 
@@ -37,4 +39,3 @@ fn main() {
     static_dispatch(&foo);
     dynamic_dispatch(&foo);
 }
-

@@ -11,11 +11,10 @@
 /// * 如果元素都是复制语义类型，也就是实现了Copy,
 /// 那么它就可以按位复制，否则就移交所有权
 fn main() {
-    
     let a = ("a".to_string(), "b".to_string());
     let b = a;
     // println!("a: {a:?}");
-    let c = (1,2,3);
+    let c = (1, 2, 3);
     let d = c;
     println!("c: {c:?}");
 }

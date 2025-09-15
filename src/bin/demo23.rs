@@ -6,7 +6,6 @@ fn min<T: Ord>(t1: T, t2: T) -> T {
         Ordering::Less | Ordering::Equal => t1,
         Ordering::Greater => t2,
     }
-
 }
 fn main() {
     assert_eq!(min(0, 10), 0);

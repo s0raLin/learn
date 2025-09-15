@@ -2,11 +2,10 @@ use std::cmp::Ordering;
 
 // TODO: implement the `min` function used in `main`.
 fn min<T: Ord>(t1: T, t2: T) -> T {
-   match t1.cmp(&t2) {
-       Ordering::Less | Ordering::Equal => t1,
-       Ordering::Greater => t2,
-   }
-    
+    match t1.cmp(&t2) {
+        Ordering::Less | Ordering::Equal => t1,
+        Ordering::Greater => t2,
+    }
 }
 
 fn main() {

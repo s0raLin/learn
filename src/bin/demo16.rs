@@ -7,6 +7,6 @@ fn main() {
     let ohter = b;
     println!("{:?}", ohter);
     //这时在使用b就不行了
-    println!("{}",a);
+    println!("{}", a);
     // println!("{}",b);
 }

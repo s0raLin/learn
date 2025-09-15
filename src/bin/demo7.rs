@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, Default)]
 struct Palyer {
     name: String,

@@ -4,7 +4,7 @@
 /// * 当移动语义作为函数参数时，会转移所有权
 fn foo(s: String) -> String {
     let w = "world".to_string();
-    s+&w
+    s + &w
 }
 
 fn main() {

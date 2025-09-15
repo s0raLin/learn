@@ -11,7 +11,11 @@ enum Operation {
 #[derive(Debug)]
 enum Expression {
     /// An operation on two subexpressions.
-    Op { op: Operation, left: Box<Expression>, right: Box<Expression> },
+    Op {
+        op: Operation,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
 
     /// A literal value
     Value(i64),

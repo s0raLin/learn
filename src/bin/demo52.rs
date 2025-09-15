@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 type NodePtr<T> = Option<Rc<RefCell<Node<T>>>>;
 #[derive(Debug)]
@@ -15,8 +15,14 @@ impl<T> Drop for Node<T> {
 }
 
 fn main() {
-    let mut first = Rc::new(RefCell::new(Node{data: 1, next: None}));
-    let mut second = Rc::new(RefCell::new(Node{data: 2, next: None}));
+    let mut first = Rc::new(RefCell::new(Node {
+        data: 1,
+        next: None,
+    }));
+    let mut second = Rc::new(RefCell::new(Node {
+        data: 2,
+        next: None,
+    }));
     first.borrow_mut().next = Some(second.clone());
     second.borrow_mut().next = Some(first);
 }

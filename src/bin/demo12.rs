@@ -2,9 +2,6 @@ fn duplicate<T: Clone>(a: T) -> (T, T) {
     (a.clone(), a.clone())
 }
 
-
-
-
 // struct NotClonable;
 #[derive(Debug)]
 struct NotClonable;

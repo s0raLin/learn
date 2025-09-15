@@ -3,28 +3,23 @@ struct Counter {
 }
 impl Iterator for Counter {
     type Item = usize;
-    fn next(&mut self)->Option<Self::Item>{
+    fn next(&mut self) -> Option<Self::Item> {
         self.count += 1;
-    
+
         if self.count < 10 {
             Some(self.count)
-        }else {
+        } else {
             None
         }
     }
 }
 
-fn main() {
-  
-
-
-}
-
+fn main() {}
 
 // 类似于namespace，可以使用use将其他模块中的内容引入到当前mod来
-mod iterator_demo { 
+mod iterator_demo {
     use super::*;
-    
+
     #[test]
     fn iter01() {
         let mut counter = Counter { count: 0 };
@@ -44,9 +39,6 @@ mod iterator_demo {
         assert_eq!((3, Some(3)), iter.size_hint());
         iter.next();
         assert_eq!((2, Some(2)), iter.size_hint());
-
-
-
     }
 
     #[test]
@@ -57,12 +49,4 @@ mod iterator_demo {
         message.extend(&[' ', 'R', 'u', 's', 't']);
         assert_eq!("hello Rust", &message);
     }
-
-
-
-
-
-   
-    
-
 }

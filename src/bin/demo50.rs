@@ -17,8 +17,6 @@ fn main() {
     closure(32);
 
     let s = "hello".to_string();
-    let join = |i: &str| {
-        s+i
-    };
+    let join = |i: &str| s + i;
     // println!("{:?}", s);
 }

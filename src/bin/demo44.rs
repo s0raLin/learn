@@ -8,5 +8,5 @@ struct A {
 fn main() {
     let a = A { a: 1, b: 2 };
     let b = a;
-    println!("{:?}",a);
+    println!("{:?}", a);
 }

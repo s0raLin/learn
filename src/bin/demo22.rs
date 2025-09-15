@@ -18,14 +18,13 @@ impl<T: Eq + Hash> Counter<T> {
 
     /// 记录给定值出现了一次。
     fn count(&mut self, value: T) {
-         match self.values.entry(value) {
-             Entry::Occupied(mut e) => {
-                 *e.get_mut() += 1;
-             }
-             Entry::Vacant(e) => {
-                 e.insert(1);
-             }
-
+        match self.values.entry(value) {
+            Entry::Occupied(mut e) => {
+                *e.get_mut() += 1;
+            }
+            Entry::Vacant(e) => {
+                e.insert(1);
+            }
         }
     }
 

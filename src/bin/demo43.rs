@@ -23,11 +23,7 @@ fn main() {
     let b = a.clone();
     println!("{}", a.a);
 
-
-    let b: B = B {
-        i: 1,
-        j: 2,
-    };
+    let b: B = B { i: 1, j: 2 };
     let c = b;
     assert_eq!(b.i, 1);
     assert_eq!(b.j, 2);

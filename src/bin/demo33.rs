@@ -7,12 +7,12 @@ trait B {
 }
 impl A for S {
     fn test(&self, i: i32) {
-        println!("Form A: {}",i)
+        println!("Form A: {}", i)
     }
 }
 impl B for S {
     fn test(&self, i: i32) {
-        println!("Form B: {}",i)
+        println!("Form B: {}", i)
     }
 }
 fn main() {

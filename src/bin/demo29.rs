@@ -1,13 +1,10 @@
-trait Bar {
-    
-}
+trait Bar {}
 trait Foo {
     fn foo1(&self) {
         println!("Hello1")
     }
     fn foo2(&self) {
         println!("Hello2")
-
     }
 }
 struct Doo;
@@ -24,5 +21,4 @@ fn main() {
     doo.foo2();
 
     dynamic_dispatch(&doo);
-
 }

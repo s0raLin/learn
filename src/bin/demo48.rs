@@ -11,8 +11,7 @@ fn main() {
             option = None;
         } else {
             println!("i is {:?}", i);
-            option = Some(i+1);
+            option = Some(i + 1);
         }
-        
     }
 }
