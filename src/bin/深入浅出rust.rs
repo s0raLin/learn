@@ -462,25 +462,19 @@ mod err {
 
     /// ## 示例四
     /// 同时创建两个可变借用的情况
-    /// ```rust
-    /// #[test]
-    /// fn demo04() {
-    ///     let mut i = 0;
-    ///     let p1 = &mut i;
-    ///     let p2 = &mut i;
-    ///
-    ///     *p1 = 2;
-    ///
-    /// }
-    ///```rust
+     #[test]
+     fn demo04() {
+         let mut i = 0;
+         let p1 = &mut i;
+        //  let p2 = &mut i;
+    
+         *p1 = 2;
+    
+     }
     // error[E0499]: cannot borrow `i` as mutable more than once at a time
     // 因为p1和p2都是可变借用，它们都指向同一个变量，
     // 而且都有修改权限，这是Rust不允许的情况，因此编译无法通过
     // 正因如此，&mut型借用也经常被称为“独占指针”，&型借用也经常被称为“共享指针”
-
-    /// # 内存不安全示例
-    /// ## 示例一(修改枚举)
-    // 加入我们有一个枚举类型
 
 }
 
@@ -573,7 +567,7 @@ mod nll {
         loop {                                 //|
             capitalize(slice);                 //|
             //<----------------------------------+
-            data.push('d');
+            // data.push('d');
         }
         data.push('e'); // OK
         data.push('f'); // OK
@@ -607,6 +601,558 @@ mod nll {
 
 }
 
+// 内部可变性
+mod interior_mutability {
+    // Rust的borrow checker的核心思想是"共享不可变，可变不共享"
+    // 但是只有这个规则是不够的，在某些情况下，我们的确需要在存在共享的情况下可变。
+    // 为了让这种情况是可控安全的，Rust设计了一种”内部可变性“
+    // Rust的mut关键字不能在声明类型时使用，智能和变量一起使用。
+    // 类型本身不能规定自己是否是可变的，一个变量是否是可变的取决于它的使用环境，而不是它的类型。
+    // 可变还是不可变取决于变量的使用方式，叫做承袭可变性，
+    // 如果用let val: T 声明，那么val就是不可变的，同时，var内部所有成员也都是不可变的
+    // 如果let mut var: T声明，那么var就是可变的，相应的，其内部所有成员也都是可变的
+    // 我们不能在类型声明的时候指定可变性，比如在struct中对某部分成员使用mut修饰，这是不合法的。
+    // 我们只能在变量声明时指定可变性。
+    // 我们也不能针对变量的某一部分成员指定可变性，其他保持不变。
+    // 常见的具备内部可变性特点的类型有Cell、RefCell、Mutex、RWLock、Atomic*等
+    // 其中Cell和RefCell是只能用在单线程环境中的具备可变性的类型
+
+    use std::{cell::{BorrowError, Cell}, rc::Rc, result};
+
+    /// ## Rc
+    #[test]
+    fn rc_demo() {
+        let r1 = Rc::new(1);
+        println!("引用个数: {}", Rc::strong_count(&r1));
+        
+        let r2 = Rc::clone(&r1);
+        println!("引用个数: {}", Rc::strong_count(&r2));
+    }
+    // Rc是Rust中的引用计数智能指针。
+    // 多个Rc指针可以同时指向同一个对象，而且有一个共享引用计数值在记录总共有多少个Rc指针指向这个对象。
+    // Rc指针提供的是共享引用，，按道理它没有修改共享数据的能力，但我们用共享引用调用clone方法，引用计数值发生了变化。
+    // 这时就是内部可变性。如果没有内部可变性，Rc类型是无法正确实现的。具备内部可变性的类型，最典型的就是Cell.
+    
+    /// 现在用一个更浅显的例子来演示Cell的能力
+    #[test]
+    fn cell_demo() {
+        use std::cell::Cell;
+
+        let data = Cell::new(100);
+        let p = &data;
+        data.set(10);
+        println!("{}", p.get());
+
+        p.set(20);
+        println!("{:?}", data);
+    }
+    // 编译通过
+    // 这里的可变性问题和我们前面见到的情况不一样了。
+    // data这个变量绑定没有用mut修饰，p这个指针有也没有用&mut修饰
+    // 然而不可变引用竟然可以调用set函数改变了变量的值。
+    // 这就是内部可变性，这个类型可以通过共享指针修改它内部的值
+    // 我们可以存在多个指向Cell类型的不可变引用，同时我们还能利用不可变引用改变Cell内部的值。
+    // 实际上这个类型是完全符合内存安全的。
+    // Cell类型把数据包裹在内部，用户无法活动指向内部状态的指针，这意味着每次方法调用都是执行的一次完整的数据移动操作。
+    // 每次方法调用后，Cell类型的内部都处于一个正确的状态，我们不可能观察到数据被破坏掉的状态。
+    // 多个共享指针指向Cell类型的状态，Cell类似一个壳，它把数据包裹在里面，所有的指针只能指向Cell,不能直接指向数据
+    // 修改数据只能通过Cell来完成，用户无法创造一个直接指向数据的指针
+    
+    // Cell提供了一些公开的API
+    // impl<T> Cell<T> {
+    //     pub fn get_mut(&mut self)->&mut T {}
+    //     pub fn set(&self, val: T) {}
+    //     pub fn swap(&self, other: &Self) {}
+    //     pub fn replace(&self, val: T) {}
+    //     pub fn into_inner(self)->T {}
+    // }
+    // impl<T: Copy> Cell<T> {
+    //     pub fn get(&self)->T {}
+    // }
+    // get_mut：从&mut Cell<T>类型制造出一个&mut T指针。
+    // 因为&mut型指针具有独占性，所以这个函数保证了调用前，
+    // 有且仅有一个可写指针指向Cell,调用后有且仅有一个可写的指针指向内部数据
+    // 它不会出现制造出多个引用指向内部数据的可能性
+    
+    // set：可以修改内部数据，它是把内部数据整个替换掉，不存在多个引用指向内部数据的可能性
+
+    // swap：修改内部数据。跟set方法一样，也是把内部数据整体替换掉，但区别在于，它仅要求&引用，不要求&mut引用
+
+    // replace:修改内部数据，跟set一样，也是把内部数据整体替换掉，位于的区别是换出来的数据作为返回值返回了。
+
+    // into_inner：相当于把这个壳剥掉了，它接受的是Self类型，即move语义，
+    //原来的Cell类型的变量会被move进这个方法，会把内部数据整体返回出来
+
+    // get：接受的是&self参数，返回的是T类型，它可以保持Cell类型不变情况下返回一个新的T类型变量，因此要求T:Copy约束
+    // 每次调用它的时候相当于把内部数据memcpy了一份返回出去
+
+    #[test]
+    fn demo() {
+        let i = Cell::new(100);
+        let j = Cell::new(200);
+        
+        let result = i.into_inner();
+        println!("{}", result);
+    }
+
+    // RefCell是另一个提供内部可变性的类型，它提供的方式与Cell类型有点不一样。
+    // Cell没办法制造出直接指向内部数据的指针，而RefCell可以。
+    // impl<T: ?Sized> RefCell<T> {
+    //     pub fn borrow(&self)->Ref<T> {}
+    //     pub fn try_borrow(&self)->Result<Ref<T>,BorrowError> {}
+    //     pub fn borrow_mut(&self)->RefMut<T> {}
+    //     pub fn try_borrow_mut(&self)->Result<RefMut<T>,BorrowMutError> {}
+    //     pub fn get_mut(&mut self)->&mut T {}
+    // }
+
+    // get_mut方法跟Cell::get_mut方法一样，可以通过&mut self获得&mut T,这个过程是安全的。
+    // RefCell最主要的两个方法是borrow和borrow_mut
+    // 另外两个try_borrow和try_borrow_mut和上面两个的区别在于错误处理方式不同。
+    #[test]
+    fn refcell_demo() { 
+        use std::cell::RefCell;
+        
+        let shared_vec = RefCell::new(vec![1,2,3]);
+        let shared1 = &shared_vec;
+        let shared2 = &shared1;
+
+        shared1.borrow_mut().push(4);
+        println!("{:?}", shared_vec.borrow());
+
+        shared2.borrow_mut().push(5);
+        println!("{:?}", shared_vec.borrow());
+    }
+
+    //我们用RefCell包了一个Vec,并且制造了两个共享引用指针指向同一个RefCell
+
+    // 这时，我们可以通过任意一个共享引用调用borrow_mut方法，获得指向内部数据的可写指针
+    // 通过这个指针调用push方法，修改内部数据，
+    // 同时，我们也可以通过调用borrow方法获取内部的只读指针，读取Vecd里的值
+
+    // 还有一个小问题，
+    // 在函数签名中，borrow方法和borrow_mut方法返回的并不是&T和&mut T
+    // 而是Ref<T> 和 RefMut<T> 。它们实际上是一种智能指针，完全可以当作&T和&mut T的等价物
+    // 标准库之所以返回这样的类型，是因为它需要这个指针生命周期结束后能做点事情
+    // 需要自定义包装一下，加上自定义析构函数。
+    
+    // 问题来了，如果borrow和borrow_mut方法可以制造出指向内部数据的只读、可读写指针，
+    // 那么它是如何保证安全性的呢？答案是，
+    // RefCell类型放弃了编译阶段的alias+mutation原则，
+    // 但依然会在执行阶段保证alias+mutation原则
+
+    // 示例如下
+    #[test]
+    fn refcell_demo2() { 
+        use std::cell::RefCell;
+
+        let shared_vec = RefCell::new(vec![1,2,3]);
+        let shared1 = &shared_vec;
+        let shared2 = &shared1;
+
+        let p1 = shared1.borrow();
+        let p2 = &p1[0];
+
+        // shared2.try_borrow_mut().push(4);
+        println!("{}", p2);
+    }
+    // 编译通过，执行问题来了，程序出现了panic
+    // 原因是，RefCell检测到同时出现了alias和mutation的情况
+    // 它为了防止更糟糕的内存不安全状态，直接使用了panic来拒绝程序继续执行
+    // 如果我们使用try_borrow方法，就会返回值是Result::Err,
+    // 这是另外一种更友好的错误处理风格
+
+    // 那么编译器是怎么检测出问题的呢？
+    // 原因是，RefCell内部有一个借用计数器，
+    // 调用borrow方法时，计数器里面的”共享引用计数“值就加1,
+    // 当这个borrow结束后，会将这个值自动减1
+    // 同理，当borrow_mut方法被调用时，它就记录一下当前的可变引用。
+    // 如果共享引用和可变引用同时出现，就会报错。
+
+    // 从原理来说，Rust默认的"借用规则检查器"的逻辑非常像一个在编译阶段执行的读写锁
+    // 如果同时存在多个"读"锁，是没问题的，如果同时存在"读"和"写"锁，或者同时粗壮你多个"写"锁，就会发生错误
+    // RefCell类型并没有打破规则，二十将这个检查逻辑从编译阶段移到了执行阶段
+    // RefCell让我们可以通过共享引用&修改内部数据，逃过编译器的静态检查。
+    // 但是它依然在兢兢业业地保证"内存安全"。
+    // 我们需要的借用指针必须通过它提供的API borrow() borrow_mut()来获得
+    // 它实际上是在执行阶段在内部维护了一套"读写锁"检查机制
+    // 在执行阶段，RefCell是有少量开销的，它需要维护一个借用计数器来保证内存安全
+
+    // 所以，我们一定不要过于滥用RefCell这样的类型，
+    // 如果确实有必要使用，请一定规划好动态借用出来的指针存活时间
+
+    // 为了让存在多个alias共享的变量也能被修改，那我们就需要使用内部可变性。
+    // Rust提供了只读引用的类型有&、Rc、Arc等指针，它们可以提供alias。
+    // Rust提供了内部可变性的类型有Cell、RefCell、Mutex、RWLock以及Atomic*等系列
+    // 如果你需要把一个类型T封装到内部可变性类型中，要怎么选择Cell和RefCell呢？
+    // 原则就是，如果你只需要整体性地存入、取出T,那么就选Cell.
+    // 如果你需要有个可读写指针指向这个T修改它，那就选RefCell
 
 
 
+
+
+}
+
+use std::ops::Deref;
+
+
+// 解引用
+mod deref { 
+    // 解引用(Deref)和取引用(Ref)的反操作，
+    // 取引用，我们有&、&mut等操作符
+    // 解引用，我们有*操作符
+    #[test]
+    fn main() {
+        let v1 = 1;
+        let p = &v1; //取引用操作
+        let v2 = *p; //解引用操作
+        println!("{} {}", v1, v2);
+    }
+    //比如我们有引用类型p: &i32,那么可以用*符号执行解引用操作。
+    // 上述例子中，v1的类型是i32,p的类型是&i32, *p的类型又返回i32
+
+    // 自定义解引用
+    // 实现标准库中的std::ops::Deref或std::ops::DerefMut这两个trait
+    // pub trait Deref {
+    //     type Target: ?Sized;
+    //     fn deref(&self) -> &Self::Target;
+    // }
+    // pub trait DerefMut: Deref {
+    //     fn deref_mut(&mut self) -> &mut Self::Target;
+    // }
+
+
+    //这个trait有一个关联类型Target,代表解引用后的目标类型
+
+    // 自动解引用
+    // Rust提供了自动解引用机制，在某些场景下隐式/自动帮我们做一些事情
+    #[test]
+    fn demo() {
+        let s = "hello";
+        println!("length: {}", s.len());
+        println!("length: {}", (&s).len());
+        println!("length: {}", (&&&&&&&&&&&&&&&s).len())
+
+    }
+
+    // 编译器帮我们做了隐式的deref调用，
+    // 当它找不到这个成员方法时，就会自动尝试使用deref方法后再找该方法
+    // 一直循环下去
+
+    //自动deref的规则是，如果一个类型T可以解引用为U,即T: Deref<U>，则&T可以转换为&U
+
+
+    /// ## 自动解引用的用处 
+    /// 用Rc这个智能指针举例，Rc实现了Deref
+    #[test]
+    fn demo01() {
+        use std::rc::Rc;
+        let s = Rc::new(String::from("hello"));
+        println!("{:?}", s.bytes());
+    }
+
+    // 我们创建了一个指向String类型的Rc指针，并调用了bytes()方法，这里是不是很奇怪？
+    // 其实等价于s.deref().bytes()
+    // String类型其实也没有bytes()方法，但是String可以继续deref,于是再试试s.deref().bytes()
+    // 于是找到了bytes()方法
+    // 这就是为什么String需要实现Deref trait,是为了让&String类型的变量可以在必要时自动转换为&str类型
+    // 所以String类型的变量可以直接调用str类型的方法
+
+    // 同理，Vec<T> 类型也实现了Deref trait,目标类型是[T], 
+    // &Vec<T>类型的变量就可以在必要时自动转换为&[T]数组切片类型
+
+
+    // 有时候需要手动处理
+    // 如果智能指针中的方法与它内部成员的方法冲突了怎么办？
+    // 编译器会优先调用当前最匹配的内心，而不会指向自动deref,在这种情况下，我们就需要手动deref
+    // 比如，Rc类型和String类型都有clone方法，但是他们执行的任务不同。
+    // Rc::clone()做的是把引用计数指针复制一份，把引用计数加1。
+    // String::clone()做的是把字符串深复制一份。
+    
+    #[test]
+    fn demo02() {
+        use std::rc::Rc;
+        let s = Rc::new(Rc::new(String::from("hello")));
+
+        let s1 = s.clone();
+        
+        let ps1 = (*s).clone();
+
+        let pps1 = (**s).clone(); 
+    }
+
+    // 一般情况下，在函数调用时，编译器会帮我们尝试自动解引用，但在某些情况下，编译器不会
+    // 以String和&str类型为例
+    // #[test]
+    // fn demo03() {
+    //     let s = String::new();
+
+    //     match &s {
+    //         "" => {},
+    //         _ => {}
+    //     }
+    // }
+    // 这段代码会编译出错
+    // match后面的变量类型是&String,匹配分支的变量类型是&'static str,
+    // 这种情况就需要我们手动完成类型转换了。方式如下
+    #[test]
+    fn demo04() {
+    
+        let s = String::new();
+
+        // 主动调用deref()达到类型转换的目的
+        //需要引入use std::ops::Deref;
+        use std::ops::Deref;
+        match s.deref() {
+            "" => {},
+            _ => {}
+        }
+
+        // 通过*s运算符，强制调用deref()
+        match &*s {
+            "" => {},
+            _ => {}
+        }
+
+        //这个方法调用的是标准库中的std::convert::AsRef方法
+        // 这个trait存在于prelude中，无需手动引入
+        match s.as_ref() {
+            "" => {},
+            _ => {}
+        }
+
+        //需要引入use std::borrow::Borrow;
+        use std::borrow::Borrow;
+        match s.borrow() {
+            "" => {},
+            _ => {}
+
+        }
+
+        // 利用String重载的Index操作
+        match &s[..] {
+            "" => {},
+            _ => {}
+        }
+    }
+
+
+    // Cow(Copy-on-write)
+    // Cow即写时复制技术。它是一种高效的资源管理手段。
+    // 假设我们有一份比较昂贵的资源，
+    // 当我们需要复制的是很好，可以采用浅复制的方式，在此基础上修改。
+    // 这样就不需要重新克隆一份新的资源。
+    // 而如果要修改复制后的值，这时候再进行深复制，在此基础上修改。
+    // 因此，它的优点是把克隆这个操作推迟到真正需要复制并写操作时发生
+
+    // 在Rust语境中，因为Copy和Clone有明确的语义之分，一般把Cow解释为Clone-on-write
+    // 它对指向的数据可能拥有所有权，或者可能不拥有所有权。
+
+    // 当它只需要对指向的数据进行只读访问时，它就只是一个借用指针;
+    // 当它需要写数据功能时，它会先分配内存，执行复制操作，再对自己拥有所有权的内存进行写入操作
+
+    // Cow在标准库中是一个enum
+    //它可以是Borrowed或Ownedd状态，
+    // 如果是Borrowed状态，可以通过调用to_mut()获取所有权,
+    // 在这个过程中，实际上它会分配一块新内存，
+    // 并将原来Borrowed状态的数据通过调用to_owned()构造出一个新的拥有所有权的对象
+    // 然后对这块拥有所有权的内存执行操作。
+
+    // Cow类型最常见的是和字符串配合使用
+    use std::borrow::Cow;
+    fn remove_spaces(input: &str)->Cow<'_, str> { 
+        if input.contains(' ') {
+            let mut buf = String::with_capacity(input.len());
+
+            for c in input.chars() {
+                if c != ' ' {
+                    buf.push(c);
+                }
+            }
+            return Cow::Owned(buf);
+        }
+        return Cow::Borrowed(input);
+    }
+
+    #[test]
+    fn test() {
+        let s1 = "mp_spaces_in_string";
+        let ret1 = remove_spaces(s1);
+
+        let s2 = "space in string";
+        let ret2 = remove_spaces(s2);
+
+        println!("{}\n{}", ret1, ret2);
+    }
+    // 在这个示例中，我们使用Cow类型最主要的目的是优化执行效率。
+    // remove_spaces函数的输入参数是&str类型，
+    // 如果输入的参数本身就不包含空格，那么我们就直接返回参数本身，无需分配新内存
+    // 如果输入参数包含空格，我们就智能在函数体内创建一个新的String对象，用于存储去除掉空格的结果，然后返回
+
+    // 这样一来，就产生了一个小矛盾，这个函数的返回值类型用&str类型和String类型都不太合适。
+    // 如果返回值类型是&str，那么需要新分配内存时，就会出现生命周期编译错误。
+    // 因为函数内部新分配的字符串的引用不能在函数调用结束后继续存在
+    // 如果返回类型指定为String,那么对于那种不需要对参数做修改的情况，会有一些性能损失。
+    // 因为输入参数&str类型转为String类型需要分配新的内存空间，并执行复制，性能开销较大。
+    // 这时候使用Cow类型就是不二之选。既能满足编译器的生命周期要求，也避免了无谓的数据复制。
+    // Cow就是优秀的零性能损失抽象的设计范例
+
+    // Cow还类型还实现了Deref trait,所以当我们需要调用类型T的成员函数时，可以直接调用，
+    // 完全无需考虑后面具体是借用指针还是拥有所有权的指针，所以我们也可以把它当成一种智能指针
+    
+}
+
+// 内存泄漏
+mod memory_leak { 
+
+    //首先我们设计一个Node类型，它包含一个指针，可以指向其他的Node实例
+    // struct Node {
+    //     next: Box<Node>
+    // }
+    // fn main() {
+    //     let node = Node {next: Box::new(...)}
+    // }
+    // 到这里写不下去了，Rust中要求，Box指针必须被合理初始化，而初始化Box的是很好又必须先传入一个Node实例
+    // 这个Node实例有要求创建一个Box指针。。。
+
+    // 要打破这个循环，我们需要使用"可空的指针",在初始化Node时，指针应该是"空状态"，后面再把它们连接起来
+    // 我们把代码改进，为了能修改node的值，还需要使用mut.
+    // struct Node {
+    //     next: Option<Box<Node>>
+    // }
+    // fn main() {
+    //     let mut node1 = Box::new(Node{next: None});
+    //     let mut node2 = Box::new(Node{next: None});
+
+    //     node1.next = Some(node2);
+    //     node2.next = Some(node1);
+    // }
+
+    // 编译错误"error: use of moved value:  'node2'"
+    // 在node1.next = Some(node2)这条语句发生了move语义，从此句后，node2变量的生命周期就已经结束了。
+    // 因此后面使用node2的时候就发生了错误，我们需要继续改进，不用node2,换而使用node1.next
+    // struct Node {
+    //     next: Option<Box<Node>>
+    // }
+    // fn main() {
+    //     let mut node1 = Box::new(Node{next: None});
+    //     let mut node2 = Box::new(Node{next: None});
+
+    //     node1.next = Some(node2);
+    //     match node1.next {
+    //         Some(mut n) => n.next = Some(node1),
+    //         Node => {}
+    //     }
+    // }
+
+    //编译又发生了错误，这是因为在match语句中，我们把node1.next的所有权转移到局部变量n中，这个n实际上就是node2的实例，
+    // 在赋值操作n.next = Some(node1)过程中，编译器认为此时node1的一部分被专业出去了，它不能在被用于赋值号右边
+
+    // 这是因为我们选择使用的指针类型不对，Box类型的指针对所管理的内存拥有所有权，之使用Box没有办法构造出一个循环引用的结构出来。
+    // 于是我们想到使用Rc指针。同时还用了Drop trait来验证这个对象是否被真正释放
+
+    // use std::rc::Rc;
+
+    // struct Node {
+    //     next: Option<Rc<Node>>
+    // }
+    // impl Drop for Node {
+    //     fn drop(&mut self) {
+    //         println!("析构函数被调用");
+    //     }
+    // }
+    // fn main() {
+    //     let mut node1 = Node{next: None};
+    //     let mut node2 = Node{next: None};
+    //     let mut node3 = Node{next: None};
+
+    //     node1.next = Some(Rc::new(node2));
+    //     node2.next = Some(Rc::new(node3));
+    //     node3.next = Some(Rc::new(node1));
+
+    // }
+    //编译依然没有通过
+    // 我们将原来栈上分配内侧改为堆上分配内存
+    
+    // use std::{rc::Rc};
+
+    // struct Node {
+    //     next: Option<Rc<Node>>
+    // }
+    // impl Drop for Node {
+    //     fn drop(&mut self) {
+    //         println!("析构函数被调用");
+    //     }
+    // }
+
+    // fn main() {
+    //     let mut node1 = Rc::new(Node{next: None});
+    //     let mut node2 = Rc::new(Node{next: None});
+    //     let mut node3 = Rc::new(Node{next: None});
+
+    //     node1.next = Some(node2);
+    //     node2.next = Some(node3);
+    //     node3.next = Some(node1);
+    // }
+
+    // 编译再次不通过
+    // Rc类型包含的数据是不可变的，通过Rc指针访问内部数据并做修改是不可行的，必须用RefCell把它们包裹起来。
+    use std::{rc::Rc, cell::RefCell};
+    struct Node {
+        next: Option<Rc<RefCell<Node>>>
+    }
+    impl Node {
+        fn new()->Node {
+            Node{next: None}
+        }
+    }
+    impl Drop for Node {
+        fn drop(&mut self) {
+            println!("析构函数被调用")
+        }
+    }
+
+    fn alloc_objects() {
+        let node1 = Rc::new(RefCell::new(Node::new()));
+        let node2 = Rc::new(RefCell::new(Node::new()));
+        let node3 = Rc::new(RefCell::new(Node::new()));
+
+        node1.borrow_mut().next = Some(node2.clone());
+        node2.borrow_mut().next = Some(node3.clone());
+        node3.borrow_mut().next = Some(node1.clone());
+    }
+
+    #[test]
+    fn main() {
+        alloc_objects();
+        println!("程序结束")
+    }
+
+    // 因为我们使用了RefCell,对Node内部数据的修改不再需要mut关键字，编译通过，
+    // 执行发现析构函数没有被调用(没有打印输出)
+    // 通过循环引用构造内存泄漏，必须同时满足三个条件：
+    // 1。使用引用计数指针
+    // 2。存在内部可变性
+    // 3。指针所指向的内容本身不是'static的
+
+    // 对于上述例子，想避免内存泄漏，
+    // 需要程序员手动把内部某个地方的Rc指针替换为std::rc::Weak(弱引用)来打破循环
+
+}
+
+// Panic
+mod panic { 
+
+    #[test]
+    // 在Rust中有一类错误叫panic
+    fn main() {
+        let x: Option<i32> = None;
+        x.unwrap();
+    }
+    // 编译没有错误，指向这段程序，输出为:
+    // thread 'panic::main' panicked at src/bin/深入浅出rust.rs:1150:11:
+    // called `Option::unwrap()` on a `None` value
+
+    // 这种情况就引发了panic,在这段代码中，我们调用了Option::unwrap()方法
+    // 正是这个方法有可能导致panic，
+}
