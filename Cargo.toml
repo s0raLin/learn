@@ -5,3 +5,256 @@ edition = "2024"
 
 [dependencies]
 slint = "1.13.1"
+
+# 二进制目标配置
+[[bin]]
+name = "trait_inheritance"
+path = "src/bin/traits/trait_inheritance.rs"
+
+[[bin]]
+name = "generic_struct"
+path = "src/bin/generics/generic_struct.rs"
+
+[[bin]]
+name = "generic_function"
+path = "src/bin/generics/generic_function.rs"
+
+[[bin]]
+name = "match_option_example"
+path = "src/bin/option_result/match_option_example.rs"
+
+[[bin]]
+name = "option_result_handling"
+path = "src/bin/option_result/option_result_handling.rs"
+
+[[bin]]
+name = "string_pop_operations"
+path = "src/bin/strings/string_pop_operations.rs"
+
+[[bin]]
+name = "struct_impl_examples"
+path = "src/bin/structs/struct_impl_examples.rs"
+
+[[bin]]
+name = "enum_memory_layout"
+path = "src/bin/enums/enum_memory_layout.rs"
+
+[[bin]]
+name = "counter_implementation"
+path = "src/bin/collections/counter_implementation.rs"
+
+[[bin]]
+name = "box_memory_allocation"
+path = "src/bin/basic/box_memory_allocation.rs"
+
+[[bin]]
+name = "comprehensive_rust_examples"
+path = "src/bin/basic/comprehensive_rust_examples.rs"
+
+[[bin]]
+name = "expression_tree_evaluation"
+path = "src/bin/basic/expression_tree_evaluation.rs"
+
+[[bin]]
+name = "medium_example_5"
+path = "src/bin/basic/medium_example_5.rs"
+
+[[bin]]
+name = "medium_example_6"
+path = "src/bin/basic/medium_example_6.rs"
+
+[[bin]]
+name = "medium_example_7"
+path = "src/bin/basic/medium_example_7.rs"
+
+[[bin]]
+name = "large_example_8"
+path = "src/bin/basic/large_example_8.rs"
+
+[[bin]]
+name = "small_example_9"
+path = "src/bin/basic/small_example_9.rs"
+
+[[bin]]
+name = "medium_example_11"
+path = "src/bin/basic/medium_example_11.rs"
+
+[[bin]]
+name = "medium_example_12"
+path = "src/bin/basic/medium_example_12.rs"
+
+[[bin]]
+name = "medium_example_13"
+path = "src/bin/basic/medium_example_13.rs"
+
+[[bin]]
+name = "medium_example_14"
+path = "src/bin/basic/medium_example_14.rs"
+
+[[bin]]
+name = "small_example_15"
+path = "src/bin/basic/small_example_15.rs"
+
+[[bin]]
+name = "medium_example_16"
+path = "src/bin/basic/medium_example_16.rs"
+
+[[bin]]
+name = "medium_example_17"
+path = "src/bin/basic/medium_example_17.rs"
+
+[[bin]]
+name = "medium_example_18"
+path = "src/bin/basic/medium_example_18.rs"
+
+[[bin]]
+name = "medium_example_19"
+path = "src/bin/basic/medium_example_19.rs"
+
+[[bin]]
+name = "small_example_20"
+path = "src/bin/basic/small_example_20.rs"
+
+[[bin]]
+name = "large_example_22"
+path = "src/bin/basic/large_example_22.rs"
+
+[[bin]]
+name = "medium_example_23"
+path = "src/bin/basic/medium_example_23.rs"
+
+[[bin]]
+name = "large_example_24"
+path = "src/bin/basic/large_example_24.rs"
+
+[[bin]]
+name = "large_example_25"
+path = "src/bin/basic/large_example_25.rs"
+
+[[bin]]
+name = "small_example_26"
+path = "src/bin/basic/small_example_26.rs"
+
+[[bin]]
+name = "medium_example_27"
+path = "src/bin/basic/medium_example_27.rs"
+
+[[bin]]
+name = "large_example_28"
+path = "src/bin/basic/large_example_28.rs"
+
+[[bin]]
+name = "medium_example_29"
+path = "src/bin/basic/medium_example_29.rs"
+
+[[bin]]
+name = "small_example_30"
+path = "src/bin/basic/small_example_30.rs"
+
+[[bin]]
+name = "small_example_31"
+path = "src/bin/basic/small_example_31.rs"
+
+[[bin]]
+name = "small_example_32"
+path = "src/bin/basic/small_example_32.rs"
+
+[[bin]]
+name = "medium_example_33"
+path = "src/bin/basic/medium_example_33.rs"
+
+[[bin]]
+name = "medium_example_34"
+path = "src/bin/basic/medium_example_34.rs"
+
+[[bin]]
+name = "medium_example_35"
+path = "src/bin/basic/medium_example_35.rs"
+
+[[bin]]
+name = "medium_example_36"
+path = "src/bin/basic/medium_example_36.rs"
+
+[[bin]]
+name = "small_example_37"
+path = "src/bin/basic/small_example_37.rs"
+
+[[bin]]
+name = "small_example_38"
+path = "src/bin/basic/small_example_38.rs"
+
+[[bin]]
+name = "small_example_39"
+path = "src/bin/basic/small_example_39.rs"
+
+[[bin]]
+name = "medium_example_40"
+path = "src/bin/basic/medium_example_40.rs"
+
+[[bin]]
+name = "medium_example_41"
+path = "src/bin/basic/medium_example_41.rs"
+
+[[bin]]
+name = "medium_example_42"
+path = "src/bin/basic/medium_example_42.rs"
+
+[[bin]]
+name = "large_example_43"
+path = "src/bin/basic/large_example_43.rs"
+
+[[bin]]
+name = "medium_example_44"
+path = "src/bin/basic/medium_example_44.rs"
+
+[[bin]]
+name = "medium_example_45"
+path = "src/bin/basic/medium_example_45.rs"
+
+[[bin]]
+name = "medium_example_46"
+path = "src/bin/basic/medium_example_46.rs"
+
+[[bin]]
+name = "small_example_47"
+path = "src/bin/basic/small_example_47.rs"
+
+[[bin]]
+name = "medium_example_48"
+path = "src/bin/basic/medium_example_48.rs"
+
+[[bin]]
+name = "medium_example_49"
+path = "src/bin/basic/medium_example_49.rs"
+
+[[bin]]
+name = "medium_example_50"
+path = "src/bin/basic/medium_example_50.rs"
+
+[[bin]]
+name = "small_example_51"
+path = "src/bin/basic/small_example_51.rs"
+
+[[bin]]
+name = "medium_example_52"
+path = "src/bin/basic/medium_example_52.rs"
+
+[[bin]]
+name = "medium_example_53"
+path = "src/bin/basic/medium_example_53.rs"
+
+[[bin]]
+name = "small_example_54"
+path = "src/bin/basic/small_example_54.rs"
+
+[[bin]]
+name = "medium_example_55"
+path = "src/bin/basic/medium_example_55.rs"
+
+[[bin]]
+name = "large_example_56"
+path = "src/bin/basic/large_example_56.rs"
+
+[[bin]]
+name = "medium_example_57"
+path = "src/bin/basic/medium_example_57.rs"
