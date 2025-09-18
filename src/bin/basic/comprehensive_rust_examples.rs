@@ -794,7 +794,7 @@ mod interior_mutability {
 
 }
 
-use std::ops::Deref;
+use std::ops::{Deref, IndexMut};
 
 
 // 解引用
@@ -840,7 +840,7 @@ mod deref {
     // 当它找不到这个成员方法时，就会自动尝试使用deref方法后再找该方法
     // 一直循环下去
 
-    //自动deref的规则是，如果一个类型T可以解引用为U,即T: Deref<U>，则&T可以转换为&U
+    //自动解引用的规则是，如果一个类型T可以解引用为U,即T: Deref<U>，则&T可以转换为&U
 
 
     /// ## 自动解引用的用处 
@@ -1157,6 +1157,783 @@ mod panic {
     // 这种情况就引发了panic,在这段代码中，我们调用了Option::unwrap()方法
     // 正是这个方法有可能导致panic，
 
+    // 调用Option::unwrap()方法
+    // 如果Option内部是Some时，它可以成功地将内部数据move出来返回
+    // 如果Option内部的数据是None,它会发生panic,panic如果没有被处理，它会导致整个程序崩溃。
+
+    // 在Rust中，正常的错误处理方式是Result类型，Panicc则是作为一种fail fast机制，处理那种万不得已的情况
+
+    // 比如，上例的unwrap方法，试图把Option<i32>转换为i32类型，当参数为None时，这种转换是没办法做到的，这个时候就智能使用panic.
+    // 所以，一般情况下，用户应该使用unwrap_or等不会制造panic的方法
+
+    // panic的原理
+    // 在Rust中，Panic的实现机制有两种。
+    // unwind 发生在panic时，会一层一层推出函数调用栈，在此过程中，当前栈内局部变量可以正常析构
+    // abort 发生在panic时，会直接推出整个程序
+
+    // 默认情况下，编译器会使用unwind方式，
+    // 所以发生功能panic时，我们可以通过一层层调用栈找到发生panic的第一现场
+
+    //但在某些嵌入式系统中，unwind根本无法实现，或者占用资源太多，这个时候我们可以选择使用abort方式实现panic
+
+    // 
+
+}
+
+// 协变
+mod covariance {
+    // Rust的生命周期产生是一种泛型类型参数，
+    type StrRef<'a> = &'a str;
+    // 这是一个指向字符串的借用指针，
+    // 它是一个泛型类型，接收一个泛型参数，之后形成一个完整类型
+    // 它和Vec<T>很像，只不过Rust中泛型类型参数既有生命周期，又有普通类型，例如
+    fn print_str<'b>(a: StrRef<'b>) {
+        println!("{}", a);
+    }
+
+    fn main() {
+        let s: StrRef<'static> = "hello";
+        print_str(&s);
+    }
+    // print_str接受的参数类型是StrRef<'b>，而实际上传进来的参数类型是StrRef<'static>
+    // 这两个类型并不完全一致，因为'b != 'static。但是Rust可以接受。
+    // 这个现象在类型系统中就叫做协变和逆变
+    // 协变：若T1<:T2时满足C<T1> <: C<T2>，则称C对于参数T是协变的
+    // 逆变：若T1<:T2时满足C<T2> <: C<T1>，则称C对于参数T是逆变的
+    // 不变：上面两种都不成立
+
+    // let s: &str = "hello";
+    //"hello" 是一个字符串字面量，它的类型是&'static str。
+    //而s是一个局部变量，它的类型是&'s str 其中泛型参数在源码中省略掉了
+    //我们把一个生命周期更长的引用&'static str赋值给一个生命周期更短的引用&'s str,这是合法的
+    // 原因在于既然这部被指向的目标在一个更长生命周期内都是合法的，
+    // 那么它在一个较短生命周期内也一定是合法的。
+
+    // 所以我们可以说引用类型&对生命周期参数具有协变关系
+    // 再举例子
+    fn test<'a>(s: &'a &'static str) {
+        let local: &'a&'a str = s;
+    }
+    // 可以看到，&'a&'static可以安全地赋值给&'a&'a str类型.
+    // 由于&'static str <: &'a str以及&'a &'static str <: &'a &'a str关系成立
+    // 这说明引用类型针对泛型参数T也是具备协变类型的。
+
+    //试试&'a mut T指针
+    // fn test01<'a>(s: &'a mut &'static str) {
+    //     let local: &'a mut &'a str = s;
+    // }
+    //编译报错，可见出现了生命周期错误，
+    //这说明从&'a mut &'static str到&'a mut &'a str的赋值是不安全的
+    //这说明&mut 指针对泛型T参数是不可变的。
+
+    fn test02<'a>(s: Box<&'static str>) {
+        let local: Box<&'a str> = s;
+    }
+    // 这段代码编译通过，说明从Box<&'static str>到Box<'a str>的转换是安全的
+    // 所以Box<T>类型针对T参数是具备协变类型的。
+
+    //  再试试fn类型，注意fn类型有两个地方可使用泛型参数，
+    // 一个是参数，另一个是返回值
+    // fn test_arg<'a>(f: fn(&'a str)) {
+    //     let local: fn(&'static str) = f;
+    // }
+    // fn test_ret<'a>(f: fn()->&'a str) {
+    //     let local: fn()->&'static str = f;
+    // }
+    // test_arg通过编译，test_ret不能，意思是，
+    // fn(&'a str)类型可以转换为fn(&'static str) 类型
+    // fn()->&'a str 类型不能转换为fn()->&'static str类型
+
+    fn test_ret<'a>(f: fn()->&'a str) {
+        f();
+    }
+    fn demo() {
+        fn s() -> &'static str { return "" }
+
+        test_ret(s);
+    }
+
+    //上面代码编译通过，这意味着fn()->&'static str类型可以安全地转换为fn()->&'a str类型
+    // 那我们可以说，类型fn(T)->U对于参数U具备逆变关系
+
+    //再换成具备内部可变性的类型
+    // use std::cell::Cell;
+    // fn test04<'a>(s: Cell<&'static str>) {
+    //     let local: Cell<&'a str> = s;
+    // }
+    // 编译器出现类型不匹配错误，这说明Cell<T>针对T参数不具备协变关系
+    // 因为如果具备内部可变性的类型还有生命周期协变关系，可以构造出悬空指针的情况
+    // 所以就需要编译器提供的UnsafeCell来表达针对类型参数具备不变关系的泛型类型。
 }
 
 
+// 迭代器
+mod iterator {
+    //Vec::iter()方法创建一个动态数组的迭代器，这但是在源码中并没有这个方法，
+    // 这是因为这个方法实际上是slice类型的方法，Vec只是自动deref后调用原生数组的迭代器而已
+
+    use std::vec;
+
+    //但Vec类型本身也是可以用于for循环的
+    fn main() {
+        let v = vec![1,2,3,4,5];
+        for i in v {
+            println!("{}", i);
+        }
+    }
+    // 这是因为Vec实现了IntoIterator trait,
+    // 标准库中的IntoIterator就是编译器留下的一个ie扩展内置for循环语法的接口
+    // 任何自定义类型，只要合理地实现了这个trait,就可以被用在内置的for循环里
+    //Vec::drain方法可以从殴打宁古塔数组中把一个范围的数据移除，
+    // 返回的还是一个迭代器，我们还可以遍历这个迭代器，使用已经被移除的元素
+
+    #[test]
+    fn demo() {
+        let mut origin = vec![1,2,3,4,5];
+
+        println!("Removed");
+        for i in origin.drain(1..3) {
+            println!("{}", i);
+        }
+
+        println!("Iter");
+        for i in origin.iter() {
+            println!("{}", i);
+        }
+    }
+}
+
+
+// 泛型
+mod generics {
+    // 有时候，我们需要针对多种类型进行统一抽象，这就是泛型。
+    // 泛型可以把类型作为参数，在函数或数据结构中使用。
+    //以我们数学的Option类型为例
+    // enum Option<T> {
+    //     Some(T),
+    //     None
+    // }
+    // 这里的<T>实际上就是声明了一个类型参数，在这个Option内部，Some(T)是一个tuple struct
+    // 包含一个元素为T,这个泛型参数类型T,可以在使用时指定具体类型。
+    #[test]
+    fn main() {
+        let x = Some(42);
+        // let y = None;
+    }
+    // 在上述代码中，泛型参数T被具体化成了i32,
+    //泛型参数可以有多个也可以有默认值
+    struct S<T=i32> {
+        data: T,
+    }
+    fn demo() {
+        let v1 = S{data: 100};
+        let v2 = S::<bool>{data: true};
+        println!("{}, {}", v1.data, v2.data);
+    }
+
+    //对于上述泛型参数T,我们可以在使用时不指定类型参数，
+    //如果不指定，参数默认为i32,也可以在使用时知道那个为其他类型。
+    // 使用不同类型参数将泛型类型具体化后，获得的是完全不同的具体类型。
+    //比如Option<i32>和Option<i64>是完全不同的类型，不可通用，也不可互相转换。
+    // 当编译器生成代码时，会为每一个不同的泛型参数生成不同的代码。
+    //各种自定义复合类型都可以携带任意泛型参数。所有泛型参数必须是真的被使用过的，
+    // struct Num<T> {
+    //     data: i32,
+    // } //这段代码会报错，因为结构体声明了一个泛型参数却没有使用它
+
+    // * 函数中的泛型
+    fn compare_option<T>(first: Option<T>, second: Option<T>)->bool {
+        match (first, second) {
+            (Some(..), Some(..))=>true,
+            (None, None)=>true,
+            _=>false,
+        }
+    }
+    // 在上面的例子中，函数compare_option有一个泛型参数T,两个形参类型均为Option<T>
+    // 这意味着两个参数必须是完全一致的类型，如果我们在参数传入两个不同的Option,会导致编译错误
+
+    // fn demo02() {
+    //     println!("{}", compare_option(Some(100_i32), Some(200_f32)));
+    // }
+
+    //编译器看到这个函数调用时，会进行类型检查，first的形参类型是Option<T>
+    // 实参类型是Option<i32>，second的形参类型是Option<T>,实参类型是Option<f32>
+    //这是编译器的类型推导功能会进行一个类似解方程组的操作
+    // 由Option<T>==Option<i32>可得T==i32,而由Option<T>==Option<f32>又得T==f32;
+    // 这就产生了矛盾，此方程无解，导致编译错误
+
+    // 一般情况下调用泛型参数可以不指定泛型参数类型，编译器可以通过类型推导自动判断
+    // 某些时候，如果需要手动指定泛型参数类型，则需要使用func::<Type>的形式
+    //泛型参数在很大程度上实现了C++的"函数重载",比如str类型有一个contains方法
+    #[test]
+    fn demo05() {
+        let s = "hello";
+        println!("{}", s.contains('h'));
+        println!("{}", s.contains("abc"));
+        println!("{}", s.contains(&['H'] as &[char]));
+        println!("{}", s.contains(|c: char| c.len_utf8() > 2));
+    }
+    // 不妨看看实现
+    //pub fn contains<P: Pattern>(&self, pat: P) -> bool
+    // 这个方法有一个泛型参数P,它有一个约束Pattern,
+    // 意味着所有实现了Pattern trait的类型都可以作为参数传入contains方法
+
+    //我们还有一种方案，可以把不同的类型统一起来，
+    // 那就是enum,通过enum的不同成员携带不同的类型信息，可以做到类似"函数重载"的功能
+
+
+    // * impl块中的泛型
+    // impl有时候也可以使用泛型,在impl<Trait> for <Type>{}这个语法结构中
+    // 泛型类型既可以出现在Trait中，也可以出现在Type中
+    // 与其他地方的泛型一样，impl块中的泛型需要先声明后使用，
+    // 在impl块中出现的泛型参数，需要紧跟在impl关键字后声明
+    // 当我们需要为某一组类型统一impl某一个trait时，
+    // 有了这个功能，很多时候就没必要单独为每个类型去充分impl了
+    // impl <T, U> Into<U> for T 
+    //     where U: From<T> {
+    //     fn into(self)->U {
+
+    //     }
+    // }
+    // 这段代码中，impl关键字后声明了两个泛型参数T、U，后面会使用它们
+    // 这跟类型、函数中的泛型参数规则一样，先声明、后使用
+
+    // 标准库中的Into和From是一对功能互逆的trait,如果A::Into<B>，意味着B::From<A>
+    // 因此标准库中这段代码，意思是针对所有类型T,只要满足U::From<T>，那么就针对类型impl Into<U>
+    // 有这样的一个impl块后，如果想为自己的两个类型提供互相转换的功能，
+    // 就只需impl From这一个trait就可以了
+
+    // * 泛型参数约束
+    //Rust的泛型类型检查是当场完成的，它会分析泛型函数的时候当场检查类型的合法性
+    // 它要求用户提供合理的泛型约束，在Rust中，trait可以用于作为泛型约束
+    // fn max<T>(a: T, b: T)->T {
+    //     if a < b {
+    //         b
+    //     } else {
+    //         a
+    //     }
+    // }
+    // #[test]
+    // fn demo06() {
+    //     println!("{}", max(100, 200));
+    //     // println!("{}", max(1.5, 2.5));
+    // }
+    //编译报错
+    //binary operation `<` cannot be applied to type `T`r
+    // 由于T没有任何约束，因此编译器认为a<b这个表达式是不合理的，
+    // 因为它只用于支持比较运算符的类型，
+    //在Rust中，只有impl了这个PartialOrd类型，才能支持比较运算符
+    // 修复方案是给T加泛型约束
+     fn max<T: PartialOrd>(a: T, b: T)->T {
+        if a < b {
+            b
+        } else {
+            a
+        }
+    }
+    #[test]
+    fn demo06() {
+        println!("{}", max(100, 200));
+    }
+    //泛型参数声明的时候使用:指定
+    // 使用where子句指定
+    // fn min<T, U>(a: T, b: T)->T
+    //     where T: PartialOrd {
+    //     if a < b {
+    //         a
+    //     } else {
+    //         b
+    //     }
+    //}
+    //这两个写法达到的目的是一样的，但是在某些情况下where子句会更方便
+
+    // *关联类型
+    // trait还也包含类型，比如Iterator trait
+    // pub trait Iterator {
+    //     type Item;
+    //     ...
+    // }
+    // 这样在trait中声明的类型叫作关联类型。
+    // 关联类型同样是这个trait的”泛型参数。“
+    // 只有指定了所有泛型参数和关联类型，这个trait才能真正具体化
+    use std::iter::Iterator;
+    use std::fmt::Debug;
+    fn use_iter<ITEM, ITER>(mut iter: ITER) 
+        where ITER: Iterator<Item=ITEM>, ITEM: Debug {
+            while let Some(i) = iter.next() {
+                println!("{:?}", i);
+            }
+    }
+    #[test]
+    fn demo07() {
+        let v = vec![1, 2, 3, 4, 5];
+        use_iter(v.iter());
+    }
+    fn use_iter2<ITER>(mut iter: ITER) 
+        where ITER: Iterator<Item=i32> {
+            while let Some(i) = iter.next() {
+                println!("{}", i);
+            }
+    }
+    // 这个版本的写法相对于上版本来说，泛型参数明显简化了，我们只需要一个泛型参数
+    // 在泛型约束条件中，可以写ITER符合Iterator约束。
+
+}
+
+mod closure {
+    #[test]
+    fn main() {
+        let add1 = |a, b| -> i32 {return a+b};
+        let add2 = |a, b|{ a + b};
+        let add3 = |a,b| a+b;
+        let x = add1(1, 2);
+        let y = add2(1, 2);
+        let z = add3(1, 2);
+        println!("result: {}",x);
+    }
+
+}
+
+
+
+// 容器
+mod eontainer {
+    // ? Vec -> 可变长数组，连续存储
+    // ? VecDeque -> 双向队列，适用于从头部和尾部插入和删除元素
+    // ? LinkedList -> 链表，非连续存储
+    // ? HashMap -> 基于Hash算法存储一系列键值对
+    // ? BTreeMap -> 基于B树 存储一系列键值对
+    // ? HashSet -> 基于哈希算法的集合，相当于没有值的HashMap
+    // ? BTreeSet -> 基于B树的集合，相当于没有值的BTreeMap
+    // ? BinaryHeap -> 基于二叉堆实现的优先级队列
+
+    // * 1. Vec
+    // Vec是最常用的容器，就是一个可以自动扩容的动态数组
+    // 重载了Index运算符，可以通过[]访问对应下标元素（内部成员）
+    // 重载了Deref/DerefMut运算符，可以自动解引用为数组切片
+    
+    // ?常用方法
+    mod vec_example {
+        mod mod1 {
+            use std::vec;
+
+            #[test]
+            fn main() {
+                // ?常见的几种Vec构造方式
+                // 1. new方法与default()方法一样，构造一个空的Vec
+                let v1 = Vec::<i32>::new();
+                // 2. with_capacity() 可以预先分配一个较大的空间，避免插入数据时动态扩容
+                let v2 = Vec::<String>::with_capacity(1000);
+                // 3. 利用宏来初始化，语法和数组初始化类似
+                let v3 = vec![1, 2, 3];
+                
+                // ?插入数据
+                let mut v4 = Vec::<i32>::new();
+                v4.push(1);
+                v4.extend_from_slice(&[10, 20, 30, 40, 50]);
+                v4.insert(2, 100);
+                println!("{:?}", v4);
+
+                // ?访问元素
+                // 调用IndexMut运算符，可以写数据
+                v4[5] = 5;
+                let i = v4[5];
+                println!("{}", i);
+                // Index运算符直接访问，如果越界会造成panic,而get方法不会，因为它返回一个Option<T>
+                if let Some(i) = v4.get(6) {
+                    println!("{}", i);
+                }
+
+                // Index运算符支持各种Range作为索引
+                let slice = &v4[4..];
+                println!("{:?}", slice);
+            }
+        }
+        // 一个Vec中能存储的元素个数最多为std::usize::MAX个，超过了会发生panic.
+        // 因为它会记录元素个数，用的是usize类型。
+        // 如果我们指定元素的类型是0大小的类型，那这个Vec根本不需要在堆上分配空间
+        // Vec中存在一个指向堆的指针，它永远是非空状态，
+        // 编译器可以据此做优化使得size_of::<Option<Vec<T>>>() == size_of::<Vec<T>>
+        // 示例如下
+        mod mod2 {
+            struct ZeroSized();
+
+            #[test]
+            fn main() {
+                let mut v = Vec::<ZeroSized>::new();
+                println!("capacity:{} length:{}", v.capacity(), v.len());
+
+                v.push(ZeroSized());
+                v.push(ZeroSized());
+                println!("capacity:{} length:{}", v.capacity(), v.len());
+
+                // p永远指向align_of::<ZeroSized>() 不需要调用allocator
+                let p = v.as_ptr();
+                println!("pointer:{:p}", p);
+
+                let size1 = std::mem::size_of::<Vec<i32>>();
+                let size2 = std::mem::size_of::<Option<Vec<i32>>>();
+                println!("size of Vec:{} size of option vec:{}", size1, size2);
+            }
+        }
+        // 编译执行结果为
+        // *capacity:18446744073709551615 length:0
+        // *capacity:18446744073709551615 length:2
+        // *pointer:0x1
+        // *size of Vec:24 size of option vec:24
+    }
+
+    // ?VecDeque
+    mod vec_deque_example {
+        use std::collections::VecDeque;
+
+        // *VecDeque是一个双向队列，在它的头部或尾部指向添加或删除操作效率很高
+        // *用法和Vec非常类似，主要多了pop_front() push_front()等方法
+        #[test]
+        fn main() {
+            let mut queue = VecDeque::<i32>::with_capacity(64);
+            //?向尾部按顺序一个一个插入数据
+            for i in 1..10 {
+                queue.push_back(i);
+            }
+
+            //?从头部按顺序一个一个取出
+            while let Some(i) = queue.pop_front() {
+                println!("{}", i);
+            }
+
+        }
+    }
+
+    //?HashMap
+    mod hashmap_example {
+        // HashMap<K, V, S>是基于hash算法的存储一组键值对(key-value-pair)的容器，
+        // 其中，泛型参数K是键的类型，V是值类型，S是哈希算法的类型。
+        // S这个泛型参数有一个默认值，平时我们使用的时候不需要手动指定，如果有特殊需要，则可以自定义哈希算法。
+        // hash算法的关键是，将记录的存储地址和key之间建立一个确定的对应关系。
+        // 这样，当想查找某条记录时，我们根据记录的key,通过一次函数计算，就可以得到它的存储地址
+        // 进而快速判断这条记录是否存在，存储在哪里
+        // 因此 Rust的HashMap要求，key要满足Eq+Hash的约束，
+        // Eq trait代表这个类型可以作相等比较，并且一定能够满足三个性质
+        // * 自反性，对任意a,满足a==a;
+        // * 对称性，如果 a==b成立，则 b==a 成立
+        // * 传递性，如果 a==b 且 b==c 成立，则 a==c 成立
+        // 而Hash trait更重要
+        // Hash方法基本上是重复性的代码，因此编译器提供了自动derive实现
+        #[derive(Hash)]
+        struct Person {
+            first_name: String,
+            last_name: String,
+        }
+        // 一个完整使用HashMap的示例如下
+        mod mod1 {
+            use std::collections::HashMap;
+
+            #[derive(Hash, Eq, PartialEq, Debug)]
+            struct Person {
+                first_name: String,
+                last_name: String,
+            }
+            impl Person {
+                fn new(first: &str, last: &str)->Self {
+                    Person {
+                        first_name: first.to_string(),
+                        last_name: last.to_string(),
+                    }
+                }
+            }
+
+            #[test]
+            fn main() {
+                let mut book =  HashMap::new();
+                book.insert(Person::new("John", "Smith"), "521-8926");
+                book.insert(Person::new("Sandra", "Dee"), "521-9655");
+                book.insert(Person::new("Ted", "Baker"), "418-4165");
+
+                let p = Person::new("John", "Smith");
+
+                // 查找key对应的值
+                if let Some(phone) = book.get(&p) {
+                    println!("手机号: {}", phone);
+                }
+
+                // 删除
+                book.remove(&p);
+
+                // 查询是否存在
+                println!("查找键: {}", book.contains_key(&p));
+            }
+        }
+        // ?HashMap的查找、插入、删除操作的平均时间复杂度都是O(1)
+        
+        // ?HashMap还设计了一种叫entry的系列API
+        mod mod2 {
+            // 考虑这样的场景，
+            // 我需要先查看某个key是否存在，然后再做插入或删除操作，
+            // 这种时候，如果我们用传统API,需要执行两遍查找操作
+            // * if map.contains_key(key) { //执行了一遍hash查找操作
+            // *    map.insert(key, value); // 又执行了一遍hash查找操作
+            // * }
+            // 如果我们用entry API,则可以提高效率，而且代码也更流畅
+            // *map.entry(key).or_insert(value);
+            // HashMap也实现了迭代器，使我们可以直接变量整个容器
+            // HashMap中，key存储的位置跟它本身的值密切相关，
+            // 如果key本身变了，那么它存放的位置也需要相应变化
+            // 所以 HashMap设计的各种api中，执行key的借用一般是只读借用，防止用户修改
+            // 但是，只读借用并不能保证它不被修改，只读借用依然可以改变具备内部可变性特点的类型。
+            // !下面示例演示，如果动态修改HashMap中的key值，会出现什么后果
+            mod mod3 {
+                use std::{cell::Cell, collections::HashMap, hash::{Hash, Hasher}};
+
+                #[derive(Eq, PartialEq)]
+                struct BadKey {
+                    value: Cell<i32>,
+                }
+                impl BadKey {
+                    fn new(v: i32)->Self {
+                        BadKey { value: Cell::new(v) }
+                    }
+                }
+                impl Hash for BadKey {
+                    fn hash<H: Hasher>(&self, state: &mut H) {
+                        self.value.get().hash(state);
+                    }
+                }
+
+                #[test]
+                fn main() {
+                    let mut map = HashMap::new();
+                    map.insert(BadKey::new(1), 100);
+                    map.insert(BadKey::new(2), 200);
+
+                    for key in map.keys() {
+                        key.value.set(key.value.get()*2);
+                    }
+
+                    println!("Find key 1:{:?}", map.get(&BadKey::new(1)));
+                    println!("Find key 2:{:?}", map.get(&BadKey::new(2)));
+                    println!("Find key 3:{:?}", map.get(&BadKey::new(4)));
+                }
+                // 在上面示例中，我们设计了一个具备内部可变性的类型作为key,然后直接在容器内将它的值改变
+                // 接下来做查找，可以看到我们再也找不到这几个key了，无论是用修改前的key,还是修改后的key
+                // 这种错误属于逻辑错误，是编译器无法静态检查出来的，
+                // 所有关联容器HashMap、HashSet、BTreeMap、BTreeSet都存在这样的情况，
+                
+
+
+            }
+
+            // ?标准库的HashSet类型和HashSet非常类似，主要区别是它之一key没有value
+
+            
+        }
+    }
+
+    //?BTreeMap
+    // BTreeMap<K, V>是基于B树数据结构的存储一组键值对的容器
+    // 它跟HashMap的用途类似，但是内部树机制不同，
+    // B树的每个节点包含多个连续存储的元素，以及多个子节点
+    // BTreeMap对key的要求是满足Ord约束，即具备全序特征            \
+    mod btreemap_example {
+        mod mod1 {
+            use std::collections::BTreeMap;
+            #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]            
+            struct Person {
+                first_name: String,
+                last_name: String,
+            }
+                    
+            impl Person {             
+                fn new(first: &str, last: &str)->Self {
+                    Person {
+                        first_name: first.to_string(),
+                        last_name: last.to_string(),
+                    }
+                }
+            }
+            #[test]
+            fn main() {
+                let mut book = BTreeMap::new();
+
+                book.insert(Person::new("John", "Smith"), "521-8976");
+                book.insert(Person::new("Sandra", "Dee"), "521-9655");
+
+                let p = Person::new("John", "Smith");
+
+                        // 查找键对应的值
+                if let Some(phone) = book.get(&p) {
+                    println!("Phone number found: {}", phone);
+                }
+
+                        // 删除
+                book.remove(&p);
+
+                        // 查询是否存在
+                println!("Find key: {}", book.contains_key(&p));
+
+            }
+        }
+
+        mod mod2 {
+            // BTreeMap也实现了entry API,BTreeMap也实现了迭代器，同样可以直接遍历
+            // 但是HashMap在遍历时，是不保证遍历结果顺序的，而BTreeMap自动报数据排好了
+
+            // BTreeMap比HashMap多的一项功能是，它不仅可以查询但个key的结果，还可以查询一个区间的结果
+
+            use std::collections::BTreeMap;
+
+            #[test]
+            fn main() {
+                let mut map = BTreeMap::new();
+                map.insert(3, "a");
+                map.insert(5, "b");
+                map.insert(8, "c");
+
+                for (k, v) in map.range(2..6) {
+                    println!("{}:{}",k,v);
+                }
+            }
+            // 当然，我们还可以使用其他Range类型，如RangeInclusive等
+        }
+    }
+
+    // BTreeSet类型跟BTreeMap非常类似，主要区别在于它只有key没有value
+    // struct BTreeSet<T> {
+    //     map: BTreeMap<T. ()>
+    // }
+    
+    // ?迭代器
+    // 迭代器是指实现了Iterator trait的类型，
+    // * trait Iterator {
+    // *     type Item;
+    // *     fn next(&mut self)->Option<Self::Item>;
+    // * }
+    // 它主要的一个方法就是next(),返回一个Option<Item>。
+    // 一般情况返回Some(Item),如果迭代完成，就返回None
+    // ?实现迭代器
+    // 假设我们的目标是，这个迭代器会生产一个从1到100的序列，我们需要创建一个类型，这里使用struct
+    // 它要实现Iterator trait, 注意到：
+    // 每次调用next方法时，它都返回不同的值，所以它一定要有一个成员，能记录上次返回的是什么
+    mod iterator_exmaple {
+        mod mod1 {
+            struct Seq {
+                current: i32,
+            }
+            impl Seq {
+                fn new()->Self {
+                    Seq {current: 0}
+                }
+            }
+            impl Iterator for Seq {
+                type Item = i32;
+
+                fn next(&mut self)->Option<i32> {
+                    if self.current < 100 {
+                        self.current+=1;
+                        Some(self.current)
+                    } else {
+                        None
+                    }
+                }
+            }
+
+            #[test]
+            fn main() {
+                let mut seq = Seq::new();
+                while let Some(i) = seq.next() {
+                    println!("{}", i);
+                }
+            }
+        }
+
+        //?迭代器组合
+        //Rust标准库有一个命名规范，从容器创造出迭代器一般有三种方法
+        // * iter() 创造出一个Item是&T类型的迭代器
+        // * iter_mut() 创造出一个Item是&mut T类型的迭代器
+        // * into_iter() 创造出一个Item是T类型的迭代器
+
+        // 示例如下
+        mod mod2 {
+            #[test]
+            fn main() {
+                let v = vec![1,2,3,4,5];
+                let mut iter = v.iter();
+                while let Some(i) = iter.next() {
+                    println!("{}",i);
+                }
+            }
+        }
+        // 如果迭代器就这么简单，那么它的用处基本就不大了，
+        // Rust的迭代器有一个特点，就是它是可组合的。
+        // Iterator trait内有一大堆方法，比如nth、map、filter、skip_while、take等等
+        // 这些方法都有默认实现，它们可以统一为适配器，
+        // 它们有个共性，返回的是一个具体类型，而这个类型本身也实现了Iterator trait
+        // 这意味着我们调用这些方法可以从一个迭代器创造出一个新的迭代器
+        mod mod3 {
+            #[test]
+            fn main() {
+                let v = vec![1,2,3,4,5,6];
+                let mut iter = v.iter()
+                    .take(5)
+                    .filter(|&x| x%2==0)
+                    .map(|&x| x*x)
+                    .enumerate();
+                while let Some((i, v)) = iter.next() {
+                    println!("{} {}", i, v);
+                }
+            }
+        }
+        // 构造一个迭代器本身，是代价很小的行为，因为它只初始化了一个对象，并不真正产生和消费数据
+        // 不论迭代器内部嵌套了多少层，最终消费数据还是要调用next()方法实现的，这个特点也被称为惰性求值。
+        // 如果用户写了下面的代码，
+        // * let v = vec![1,2,3,4,5];
+        // * v.iter().map(|x|, println!("{}",x));
+        // 实际上什么也没做，因为map方法只是把前面的迭代器包装，构造一个新的迭代器，没有真正读取容器内的数据
+    }
+
+    // ?for循环
+    // 在前面的示例中，我们都是手工调用迭代器的next()方法，然后使用while let语法来做循环
+    // 实际上，Rust里更简洁，跟自然地使用迭代器的方式是for循环
+    // 本质上for循环是专门为迭代器设计的语法糖，
+    // * for循环可以对针对数组切片、字符串、Range、Vec、LinkedList、HashMap、BTreeMap等
+    // *所有具有迭代器的类型执行循环
+
+    mod for_exmaple {
+        use std::collections::HashMap;
+        
+
+        #[test]
+        fn main() {
+            let v = vec![1,2,3,4,5,6];
+            for i in v {
+                println!("{}", i);
+            }
+
+            let map: HashMap<i32, char> = 
+                [(1, 'a'),(2, 'b'),(3, 'c'), (4, 'd')].iter().cloned().collect();
+            for (k, v) in &map {
+                println!("{} : {}", k, v);
+            }
+        }
+        // 只要实现了IntoIterator,那么调用into_iter()方法就可以得到对应的迭代器。
+        // 这个into_iter()方法的receiver(接收者)是self而不是&self,执行的是move语义
+        // 这么做，可以同时支持Item类型为T、&T、&mut,用户有选择的权利。
+
+        // Rust中的for <item> in <container> {<body>} 语法结构就是一个语法糖，
+        // 这个语法的原理是调用<container>.into_iter()获得迭代器，
+        // 然后不断循环调用迭代器的next()方法，
+        // 将返回值解包，赋值给<item>，然后调用<body>语句块
+        // Rust中的IntoIterator trait实际上就是for语法的扩展接口
+        // *如果我们需要让各种自定义容器也能在for循环中使用，
+        // *那就可以借鉴标准库中的写法，自行实现这个trait
+
+    
+
+    }
+
+}
+
+// ?生成器
+// 在rust中，协程是编写高性能异步程序的关键设施，生成器是协程的基础
+// 生成器的语法就像闭包，但和闭包有一个区别，即yield关键字。
+// 当闭包中有yield关键字时，它就不是一个闭包，而是一个生成器
